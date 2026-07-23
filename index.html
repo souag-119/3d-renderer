@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Render3D Studio — محرك رندر Path Tracing</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== شريط علوي ===== -->
+  <header id="topbar">
+    <div class="brand">
+      <span class="logo">◆</span>
+      <span class="title">Render3D Studio</span>
+    </div>
+    <div class="topbar-actions">
+      <button id="btnMenuToggleLeft" class="icon-btn" title="لوحة المشهد">☰</button>
+      <button id="btnOutputWindow" class="btn-accent">نافذة الإخراج</button>
+      <button id="btnMenuToggleRight" class="icon-btn" title="لوحة الخصائص">⚙</button>
+    </div>
+  </header>
+
+  <div id="workspace">
+
+    <!-- ===== اللوحة اليسرى: المشهد ===== -->
+    <aside id="panelScene" class="panel">
+      <div class="panel-header">
+        <span>عناصر المشهد</span>
+        <button id="btnCloseLeft" class="icon-btn small">×</button>
+      </div>
+
+      <div class="panel-section">
+        <div class="section-title">إضافة عنصر</div>
+        <div class="grid-btns">
+          <button class="add-btn" data-add="cube">🧊 مكعب</button>
+          <button class="add-btn" data-add="sphere">⚪ كرة</button>
+          <button class="add-btn" data-add="plane">▭ مستوى</button>
+          <button class="add-btn" data-add="cylinder">🥫 اسطوانة</button>
+          <button class="add-btn" data-add="cone">🔺 مخروط</button>
+          <button class="add-btn" data-add="torus">🍩 حلقة</button>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="section-title">إضافة إضاءة</div>
+        <div class="grid-btns">
+          <button class="add-btn light" data-addlight="point">💡 نقطية</button>
+          <button class="add-btn light" data-addlight="sun">☀ شمسية</button>
+          <button class="add-btn light" data-addlight="area">▭ مساحية</button>
+        </div>
+      </div>
+
+      <div class="panel-section flex1">
+        <div class="section-title">شجرة المشهد</div>
+        <ul id="sceneTree" class="scene-tree"></ul>
+      </div>
+
+      <div class="panel-section">
+        <div class="obj-actions">
+          <button id="btnDuplicate" class="btn-sm" disabled>⎘ نسخ</button>
+          <button id="btnDelete" class="btn-sm danger" disabled>🗑 حذف</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== منطقة العرض المركزية ===== -->
+    <main id="viewportArea">
+      <div id="viewportToolbar">
+        <div class="gizmo-modes">
+          <button class="gmode active" data-mode="translate" title="نقل">↔</button>
+          <button class="gmode" data-mode="rotate" title="تدوير">⟳</button>
+          <button class="gmode" data-mode="scale" title="تحجيم">⤢</button>
+        </div>
+        <div class="viewport-info">
+          <span id="fpsCounter">-- FPS</span>
+          <span id="objCount">0 عنصر</span>
+        </div>
+      </div>
+      <div id="viewportContainer">
+        <canvas id="viewportCanvas"></canvas>
+        <svg id="gizmoOverlay"></svg>
+        <div id="viewportHint">اسحب: تدوير الكاميرا • عجلة الفأرة: تكبير • Shift+سحب: تحريك جانبي</div>
+      </div>
+    </main>
+
+    <!-- ===== اللوحة اليمنى: الخصائص ===== -->
+    <aside id="panelProps" class="panel">
+      <div class="panel-header">
+        <span>الخصائص</span>
+        <button id="btnCloseRight" class="icon-btn small">×</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="object">العنصر</button>
+        <button class="tab-btn" data-tab="material">المتريال</button>
+        <button class="tab-btn" data-tab="camera">الكاميرا</button>
+        <button class="tab-btn" data-tab="render">الرندر</button>
+      </div>
+
+      <!-- تبويب العنصر -->
+      <div class="tab-content active" id="tabObject">
+        <div id="noSelection" class="empty-hint">لا يوجد عنصر محدد</div>
+        <div id="objectProps" class="hidden">
+          <div class="field">
+            <label>الاسم</label>
+            <input type="text" id="propName">
+          </div>
+          <div class="section-title">الموضع (Position)</div>
+          <div class="xyz-row">
+            <input type="number" step="0.1" id="posX" data-axis="x">
+            <input type="number" step="0.1" id="posY" data-axis="y">
+            <input type="number" step="0.1" id="posZ" data-axis="z">
+          </div>
+          <div class="section-title">الدوران (Rotation °)</div>
+          <div class="xyz-row">
+            <input type="number" step="1" id="rotX" data-axis="x">
+            <input type="number" step="1" id="rotY" data-axis="y">
+            <input type="number" step="1" id="rotZ" data-axis="z">
+          </div>
+          <div class="section-title">الحجم (Scale)</div>
+          <div class="xyz-row">
+            <input type="number" step="0.1" id="scaleX" data-axis="x">
+            <input type="number" step="0.1" id="scaleY" data-axis="y">
+            <input type="number" step="0.1" id="scaleZ" data-axis="z">
+          </div>
+
+          <div id="lightProps" class="hidden">
+            <div class="section-title">إعدادات الإضاءة</div>
+            <div class="field">
+              <label>اللون</label>
+              <input type="color" id="lightColor" value="#ffffff">
+            </div>
+            <div class="field">
+              <label>الشدة: <span id="lightIntensityVal">1.0</span></label>
+              <input type="range" id="lightIntensity" min="0" max="20" step="0.1" value="1">
+            </div>
+            <div class="field" id="lightRadiusField">
+              <label>نصف القطر (نعومة الظل): <span id="lightRadiusVal">0.1</span></label>
+              <input type="range" id="lightRadius" min="0" max="2" step="0.01" value="0.1">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- تبويب المتريال -->
+      <div class="tab-content" id="tabMaterial">
+        <div id="noMatSelection" class="empty-hint">اختر عنصراً لتعديل متريال</div>
+        <div id="materialProps" class="hidden">
+          <div class="field">
+            <label>مكتبة الماتريالات</label>
+            <select id="materialSelect"></select>
+          </div>
+          <div class="grid-btns">
+            <button id="btnNewMaterial" class="btn-sm">+ جديد</button>
+            <button id="btnDupMaterial" class="btn-sm">⎘ نسخ متريال</button>
+          </div>
+
+          <div class="field">
+            <label>اسم المتريال</label>
+            <input type="text" id="matName">
+          </div>
+
+          <div class="field">
+            <label>اللون الأساسي (Albedo)</label>
+            <input type="color" id="matColor" value="#c8c8c8">
+          </div>
+
+          <div class="field">
+            <label>Metallic: <span id="matMetallicVal">0.0</span></label>
+            <input type="range" id="matMetallic" min="0" max="1" step="0.01" value="0">
+          </div>
+
+          <div class="field">
+            <label>Roughness: <span id="matRoughnessVal">0.5</span></label>
+            <input type="range" id="matRoughness" min="0" max="1" step="0.01" value="0.5">
+          </div>
+
+          <div class="field">
+            <label>IOR (معامل الانكسار): <span id="matIorVal">1.45</span></label>
+            <input type="range" id="matIOR" min="1" max="3" step="0.01" value="1.45">
+          </div>
+
+          <div class="field">
+            <label>Transmission (شفافية): <span id="matTransVal">0.0</span></label>
+            <input type="range" id="matTransmission" min="0" max="1" step="0.01" value="0">
+          </div>
+
+          <div class="field">
+            <label>Emission (إصدار ضوء): <span id="matEmissionVal">0.0</span></label>
+            <input type="range" id="matEmission" min="0" max="10" step="0.05" value="0">
+          </div>
+          <div class="field">
+            <label>لون الإصدار</label>
+            <input type="color" id="matEmissionColor" value="#ffffff">
+          </div>
+
+          <button id="btnApplyMaterial" class="btn-accent full">✔ تطبيق (Apply)</button>
+        </div>
+      </div>
+
+      <!-- تبويب الكاميرا -->
+      <div class="tab-content" id="tabCamera">
+        <div class="field">
+          <label>زاوية الرؤية FOV: <span id="camFovVal">50</span>°</label>
+          <input type="range" id="camFov" min="10" max="120" step="1" value="50">
+        </div>
+        <div class="field">
+          <label>
+            <input type="checkbox" id="camDofEnabled">
+            تفعيل عمق المجال (Depth of Field)
+          </label>
+        </div>
+        <div class="field">
+          <label>مسافة التركيز: <span id="camFocusDistVal">5.0</span></label>
+          <input type="range" id="camFocusDist" min="0.1" max="30" step="0.1" value="5">
+        </div>
+        <div class="field">
+          <label>فتحة العدسة (Aperture): <span id="camApertureVal">0.05</span></label>
+          <input type="range" id="camAperture" min="0" max="1" step="0.005" value="0.05">
+        </div>
+        <button id="btnFocusPick" class="btn-sm full">🎯 التقاط نقطة التركيز من المشهد</button>
+        <div class="section-title">خلفية / بيئة</div>
+        <div class="field">
+          <label>لون السماء العلوي</label>
+          <input type="color" id="envColorTop" value="#87ceeb">
+        </div>
+        <div class="field">
+          <label>لون السماء السفلي</label>
+          <input type="color" id="envColorBottom" value="#f5f0e8">
+        </div>
+        <div class="field">
+          <label>شدة البيئة: <span id="envIntensityVal">1.0</span></label>
+          <input type="range" id="envIntensity" min="0" max="5" step="0.05" value="1">
+        </div>
+      </div>
+
+      <!-- تبويب الرندر -->
+      <div class="tab-content" id="tabRender">
+        <div class="section-title">جودة المعاينة الحية</div>
+        <div class="field">
+          <label>أقصى ارتدادات (Bounces): <span id="bouncesVal">4</span></label>
+          <input type="range" id="bounces" min="1" max="12" step="1" value="4">
+        </div>
+        <div class="field">
+          <label>
+            <input type="checkbox" id="denoiserEnabled" checked>
+            مزيل التشويش (Denoiser)
+          </label>
+        </div>
+        <div class="field">
+          <label>قوة المزيل: <span id="denoiserStrengthVal">0.5</span></label>
+          <input type="range" id="denoiserStrength" min="0" max="1" step="0.01" value="0.5">
+        </div>
+        <div class="section-title">تقسيم الإطار (Tiles)</div>
+        <div class="field">
+          <label>حجم البلاطة: <span id="tileSizeVal">64</span>px</label>
+          <input type="range" id="tileSize" min="16" max="256" step="16" value="64">
+        </div>
+        <div class="hint-box">يتم رندر المشهد تدريجياً عبر تقسيم الإطار إلى بلاطات (Tiles) لتوزيع الحمل الحسابي وتحديث الصورة تباعاً.</div>
+      </div>
+
+    </aside>
+  </div>
+
+  <!-- ===== نافذة الإخراج (Modal) ===== -->
+  <div id="outputModal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span>نافذة الإخراج — Render Output</span>
+        <button id="btnCloseOutput" class="icon-btn small">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="output-controls">
+          <div class="field">
+            <label>الدقة</label>
+            <select id="outputRes">
+              <option value="640x360">640×360 (SD)</option>
+              <option value="854x480">854×480</option>
+              <option value="1280x720" selected>1280×720 (HD)</option>
+              <option value="1920x1080">1920×1080 (Full HD)</option>
+              <option value="custom">مخصص...</option>
+            </select>
+          </div>
+          <div class="field custom-res hidden" id="customResFields">
+            <label>عرض × ارتفاع</label>
+            <div class="xyz-row">
+              <input type="number" id="customW" value="1280" min="64" max="3840">
+              <input type="number" id="customH" value="720" min="64" max="2160">
+            </div>
+          </div>
+          <div class="field">
+            <label>عدد العينات (Samples): <span id="outSamplesVal">64</span></label>
+            <input type="range" id="outSamples" min="4" max="512" step="4" value="64">
+          </div>
+          <div class="output-buttons">
+            <button id="btnStartRender" class="btn-accent full">▶ بدء الرندر</button>
+            <button id="btnCancelRender" class="btn-sm full hidden">⏹ إيقاف</button>
+            <button id="btnSaveRender" class="btn-sm full" disabled>⬇ حفظ الصورة</button>
+          </div>
+          <div class="render-progress">
+            <div class="progress-bar-track"><div id="renderProgressBar" class="progress-bar-fill"></div></div>
+            <span id="renderProgressText">جاهز</span>
+          </div>
+        </div>
+        <div class="output-canvas-wrap">
+          <canvas id="outputCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+</div>
+
+<script src="engine.js"></script>
+<script src="scene.js"></script>
+<script src="ui.js"></script>
+<script src="main.js"></script>
+</body>
+</html>
